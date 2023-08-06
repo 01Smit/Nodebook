@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken')
 const JWT_SECRET = 'anonymoustokenstring'
 const fetchUser = require('../middleware/fetchUser')
 
+let success = false;
 //  Route 1: Create a user using: POST "/api/auth/new-user". Doesn't require auth
 router.post('/new-user', [
     body('name', 'Enter a valid name').isLength({min: 3}),
@@ -24,7 +25,8 @@ async (req,res)=>{
         // check whether user (email) exists, if not create new user and if it exists return error
         let user = await User.findOne({email: req.body.email})
         if(user){
-            return res.status(400).json({error: `This E-mail is already registered`})
+            success=false;
+            return res.status(400).json({success, error: `This E-mail is already registered`})
         }
         const salt = await bcrypt.genSalt(10);
         
@@ -35,8 +37,8 @@ async (req,res)=>{
             password: secPass,
         })
         const authToken = jwt.sign(user.id, JWT_SECRET)
-        
-        res.json({authToken: authToken})
+        success = true;
+        res.json({success, authToken: authToken})
         // res.json(user)
     } catch (error) {
         console.error(error.message);
@@ -53,7 +55,8 @@ router.post('/login', [
 async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()){
-        return res.status(400).json({errors: errors.array()});
+        success = false;
+        return res.status(400).json({success, errors: errors.array()});
     }
     // console.log(req.body)
 
@@ -62,12 +65,14 @@ async (req, res) => {
     try {
         let user = await User.findOne({email});
         if(!user){
-            return res.status(400).json({error: `Please enter correct credentials`});
+            success = false;
+            return res.status(400).json({success, error: `Please enter correct credentials`});
         }
         
         const passCompare = await bcrypt.compare(password, user.password);
         if(!passCompare){
-            return res.status(400).json({error: `Please enter correct credentials`});
+            success =false
+            return res.status(400).json({success, error: `Please enter correct credentials`});
         }
         
         const payload = {
@@ -76,7 +81,8 @@ async (req, res) => {
             }
         }
         const authToken = jwt.sign(payload, JWT_SECRET)
-        res.json({authToken: authToken})
+        success=true;
+        res.json({success, authToken: authToken})
 
     } catch (error) {
         console.error(error.message);
@@ -99,6 +105,4 @@ async (req,res)=>{
     }    
 })
 
-
 module.exports = router;
-
